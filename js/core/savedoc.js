@@ -267,8 +267,7 @@ Xc=7N2BOw}HmC}.HB.sl=^M{0MHEc)r~QUn%<suQA-1v90%fYa15-AS/:SE[JC(?XM|tq~P@+ti.G4-8
             
             addStabledHorses(locationNameOffset, specs) {
                 if (!Array.isArray(specs) || !specs.length) throw new Error('addStabledHorses: nothing to add.');
-                const loc = this.state.locations.find((l) => l.nameOffset === locationNameOffset);
-				console.log(loc);
+                const loc = this.state.locations.find((l) => l.nameOffset === locationNameOffset);				
                 if (!loc) throw new Error('addStabledHorses: no location record at offset ' + locationNameOffset + '.');
 
                 
