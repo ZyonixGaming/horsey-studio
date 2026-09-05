@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horsey Studio</title>
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon"/>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/horses.css">
+<link rel="stylesheet" href="css/world.css">
+<link rel="stylesheet" href="css/genome.css">
+<link rel="stylesheet" href="css/bulk.css">
+</head>
+<body>
+<div id="shell">
+    <div id="appbar">
+        <span class="brand">🐴 Horsey Studio</span>
+        <span class="doc-info" id="docInfo">No save loaded.</span>
+        <div class="spacer"></div>
+        <div class="btn-group">
+            <button class="btn" id="openBtn" title="Open (Ctrl+O)">📂 Open</button>
+            <button class="btn primary" id="saveBtn" title="Save (Ctrl+S)" disabled>💾 Save</button>
+            <button class="btn icon" id="undoBtn" title="Undo (Ctrl+Z)" disabled>↶</button>
+            <button class="btn icon" id="redoBtn" title="Redo (Ctrl+Y)" disabled>↷</button>
+            <button class="btn" id="revertBtn" title="Revert all changes" disabled>⟲ Revert all</button>
+        </div>
+        <button class="btn icon" id="settingsBtn" title="Settings">⚙</button>
+    </div>
+    <div id="body">
+        <div id="rail">
+            <button class="rail-btn active" data-workspace="world" title="World (1)">🗺</button>
+            <button class="rail-btn" data-workspace="horses" title="Horses (2)">🐎</button>
+            <button class="rail-btn" data-workspace="genome" title="Genome (3)">🧬</button>
+            <button class="rail-btn" data-workspace="bulk" title="Bulk (4)">⚡</button>
+            <div class="rail-spacer"></div>
+        </div>
+        <div id="workspace-column">
+            <div id="context-toolbar">
+                <div class="toolbar-content active" data-workspace="world" id="world-toolbar">
+                    <div class="tgroup">
+                        <button class="tool-btn" data-tool="select" title="Click a marker or tile to inspect it; drag a marker to move it">🖱️ Select</button>
+                        <button class="tool-btn active" data-tool="paint" title="Paint">🖌️ Paint</button>
+                        <button class="tool-btn" data-tool="rect" title="Rectangle">▭ Rect</button>
+                        <label class="glabel" id="rectSelectModeWrap" style="display:none; margin-left:-6px;" title="Drag a rectangle to select a region for the Bulk workspace, instead of painting it">
+                            <input type="checkbox" id="rectSelectMode"> select region
+                        </label>
+                        <button class="tool-btn" data-tool="fill" title="Flood fill">🪣 Fill</button>
+                        <button class="tool-btn" data-tool="line" title="Line">📏 Line</button>
+                        <button class="tool-btn" data-tool="eyedropper" title="Eyedropper">💧 Pick</button>
+                        <button class="tool-btn" data-tool="fence" title="Toggle fence edges">🚧 Fence</button>
+                        <button class="tool-btn" data-tool="bury" title="Click to place a buried item">⛏️ Bury</button>
+                        <button class="tool-btn" data-tool="horse" title="Click to place a cloned horse. Alt-click a horse to make it the donor. Drag a rectangle to scatter.">🐴 Add Horse</button>
+                        <button class="tool-btn" data-tool="location" title="Click a tile to place a location. The file holds one slot per location, so each can exist at most once.">📍 Add Location</button>
+                    </div>
+                    <div class="tgroup">
+                        <label class="glabel">Brush</label>
+                        <select id="brushSize"><option value="1">1</option><option value="3">3</option><option value="5">5</option></select>
+                    </div>
+                    <div class="tgroup" id="buryItemGroup" style="display:none;">
+                        <label class="glabel">Item</label>
+                        <select id="buryItemSelect"></select>
+                    </div>
+                    <div class="tgroup" id="addHorseGroup" style="display:none;">
+                        <label class="glabel">Donor</label>
+                        <span id="addHorseDonor" class="glabel" style="min-width:9em;" title="The horse being copied. Alt-click any horse on the map to change it.">—</span>
+                        <label class="glabel">Genes</label>
+                        <select id="addHorseGenome" title="Whose genome the new horses carry. For population-based randomisation, place them and then use the Bulk workspace.">
+                            <option value="donor">Same as donor</option>
+                            <option value="random">Random on-map horse</option>
+                        </select>
+                        <label class="glabel">Count</label>
+                        <select id="addHorseCount">
+                            <option value="1">1</option>
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                        </select>
+                    </div>
+                    <div class="tgroup" id="addLocationGroup" style="display:none;">
+                        <label class="glabel">Location</label>
+                        <select id="addLocationIndex" title="Only locations this save does not already contain, and for which a template was harvested, are listed."></select>
+                        <label class="glabel">Name</label>
+                        <input type="text" id="addLocationName" size="18" title="Leave as-is to use the game's own name for this location.">
+                    </div>
+                    <div class="tgroup">
+                        <label class="glabel">Zoom</label>
+                        <button class="btn" data-zoom="1">1x</button>
+                        <button class="btn" data-zoom="2">2x</button>
+                        <button class="btn" data-zoom="4">4x</button>
+                        <button class="btn" data-zoom="fit">Fit</button>
+                    </div>
+                    <div class="tgroup overlay-dropdown" id="overlayDropdown">
+                        <button class="btn" id="overlayDropdownBtn">Overlays ▾ <span id="overlayCount"></span></button>
+                        <div class="overlay-dropdown-panel">
+                            <label><input type="checkbox" id="ovLocations" checked> Locations</label>
+                            <label><input type="checkbox" id="ovGround" checked> Ground items</label>
+                            <label><input type="checkbox" id="ovHoles" checked> Holes</label>
+                            <label><input type="checkbox" id="ovBuried"> Buried</label>
+                            <label><input type="checkbox" id="ovHorses" checked> Horses</label>
+                            <label style="padding-left:20px; gap:4px;">Colour by
+                                <select id="horseColorBy" style="margin-left:auto; padding:1px 4px; font-size:10px;">
+                                    <option value="none" selected>none</option>
+                                    <option value="personality">personality</option>
+                                    <option value="status">status</option>
+                                    <option value="age">age</option>
+                                    <option value="named">named</option>
+                                </select>
+                            </label>
+                            <label><input type="checkbox" id="ovLabels" checked> Name labels</label>
+                            <label><input type="checkbox" id="ovHealth"> Growth heat</label>
+                            <label><input type="checkbox" id="ovDebug"> Debug flags</label>
+                        </div>
+                    </div>
+                    <div class="tgroup">
+                        <button class="btn" id="worldOverflowBtn" title="Resize map">⋯</button>
+                    </div>
+                </div>
+            </div>
+            <div id="workspace-body">
+                <div id="empty-state">
+                    <div style="font-size:40px;">🐴</div>
+                    <div>Open a save file to get started.</div>
+                    <button class="btn primary" id="emptyOpenBtn">📂 Open save</button>
+                </div>
+                <div class="workspace-pane" data-workspace="world" style="flex-direction:column;">
+                    <div id="world-pane-body">
+                        <div class="wpanel" id="world-palette-panel">
+                            <button class="wpanel-strip" data-collapse="world-palette-panel">PALETTE</button>
+                            <div class="wpanel-body palette-panel" id="palettePanel"></div>
+                        </div>
+                        <div class="canvas-wrap" id="canvasWrap">
+                            <canvas id="viewportCanvas"></canvas>
+                            <div class="minimap-wrap"><canvas id="minimapCanvas"></canvas></div>
+                        </div>
+                        <div class="wpanel" id="world-inspector-panel">
+                            <div class="wpanel-body" style="display:flex; flex-direction:column;">
+                                <div class="side-tabs">
+                                    <button class="side-tab active" data-tab="objects">📋 Objects</button>
+                                    <button class="side-tab" data-tab="inspector">🔍 Inspector</button>
+                                </div>
+                                <div style="flex:1; overflow-y:auto; padding: var(--sp-3);">
+                                    <div class="side-tab-content active" id="tab-objects">
+                                        <p class="hint" id="locationsHint"></p>
+                                        <div class="chooser-group">
+                                            <label class="chooser-label"><span>📍 Location</span></label>
+                                            <div class="chooser-row">
+                                                <select id="chooseLocation"></select>
+                                                <button class="btn" id="centerLocationBtn" title="Centre on">🎯</button>
+                                            </div>
+                                        </div>
+                                        <div class="chooser-group">
+                                            <label class="chooser-label"><span>📦 Buried item</span></label>
+                                            <div class="chooser-row">
+                                                <select id="chooseBuried"></select>
+                                                <button class="btn" id="centerBuriedBtn" title="Centre on">🎯</button>
+                                                <button class="btn danger" id="deleteBuriedBtn" title="Delete">✕</button>
+                                            </div>
+                                            <button class="btn" id="addBuriedBtn" style="margin-top:6px;">➕ Add buried item</button>
+                                        </div>
+                                        <div class="chooser-group">
+                                            <label class="chooser-label"><span>🔷 Ground item</span></label>
+                                            <div class="chooser-row">
+                                                <select id="chooseGround"></select>
+                                                <button class="btn" id="centerGroundBtn" title="Centre on">🎯</button>
+                                                <button class="btn danger" id="deleteGroundBtn" title="Delete">✕</button>
+                                            </div>
+                                        </div>
+                                        <div class="chooser-group">
+                                            <label class="chooser-label"><span>🕳️ Hole</span></label>
+                                            <div class="chooser-row">
+                                                <select id="chooseHole"></select>
+                                                <button class="btn" id="centerHoleBtn" title="Centre on">🎯</button>
+                                                <button class="btn danger" id="deleteHoleBtn" title="Delete">✕</button>
+                                            </div>
+                                        </div>
+                                        <div class="chooser-group">
+                                            <label class="chooser-label"><span>🐎 Horse</span> <span class="count" id="horseCount"></span></label>
+                                            <div class="chooser-row">
+                                                <select id="chooseHorse"></select>
+                                                <button class="btn" id="centerHorseBtn" title="Centre on">🎯</button>
+                                                <button class="btn danger" id="deleteHorseBtn" title="Delete">✕</button>
+                                            </div>
+                                            <label class="chooser-filter"><input type="checkbox" id="horseNamedOnly"> named only</label>
+                                        </div>
+                                    </div>
+                                    <div class="side-tab-content" id="tab-inspector">
+                                        <div id="inspectorContent"><p class="inspector-empty">Click a marker or tile on the map (Select tool), or pick from a list in the Objects tab.</p></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="wpanel-strip" data-collapse="world-inspector-panel">INSPECTOR</button>
+                        </div>
+                    </div>
+                    <div id="world-status" style="flex:0 0 auto; display:flex; gap: var(--sp-5); padding: 2px var(--sp-4); background: var(--bg-0); border-top: 1px solid var(--border-soft); font-size: 11px; color: var(--text-1); font-family: monospace;">
+                        <span id="worldStatusTile">—</span>
+                        <span id="worldStatusPalette">—</span>
+                    </div>
+                </div>
+                <div class="workspace-pane" data-workspace="horses">
+                    <div class="hz-root">
+                        <div class="hz-toolbar">
+                            <input type="search" id="hzSearch" class="hz-search" placeholder="🔍 Search by name…">
+                            <select id="hzLocationFilter" class="hz-location-filter"><option value="">All locations</option></select>
+                            <label class="hz-chip"><input type="checkbox" id="hzNamedOnly" checked> Named only</label>
+                            <!-- Plan 15.6: only meaningful once the filter names one location,
+                                 which is also the only state in which "here" is unambiguous. -->
+                            <button class="btn" id="hzAddStabled" hidden title="Add a cloned horse to the location this filter names">＋ Add horse here</button>
+                            <select id="hzAddStabledCount" class="inline-select" hidden title="How many to add"></select>
+                            <span class="hz-spacer"></span>
+                            <span id="hzCount" class="hz-count"></span>
+                            <button class="btn" id="hzBulkBtn" disabled title="Bulk workspace — phase 6">⚡ Bulk on these →</button>
+                        </div>
+                        <div class="hz-body">
+                            <div class="hz-roster">
+                                <div id="hzPlayerRow"></div>
+                                <div id="hzRosterScroll" class="hz-roster-scroll">
+                                    <div id="hzRosterSpacer" class="hz-roster-spacer">
+                                        <div id="hzRosterRows" class="hz-roster-rows"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="hzProps" class="hz-props">
+                                <div class="hz-empty">Open a save file to browse its roster.</div>
+                            </div>
+                            <div id="hzGenome" class="hz-genome">
+                                <div class="hz-empty">Open a save file to preview a genome.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="workspace-pane" data-workspace="genome">
+                    <div class="gn-root">
+                        <div class="gn-subjectbar">
+                            <label class="gn-subject-label" for="gnSubjectSelect">Subject</label>
+                            <select id="gnSubjectSelect" class="gn-subject-select"></select>
+                            <span id="gnWriteBadge" class="gn-write-badge" hidden>&#9679; writes to save</span>
+                            <span class="gn-spacer"></span>
+                            <label class="gn-compare-label" for="gnCompareSelect">Compare</label>
+                            <select id="gnCompareSelect" class="gn-compare-select"><option value="">none</option></select>
+                            <label class="gn-chip"><input type="checkbox" id="gnDiffOnly"> &#127919; differences only</label>
+                            <button class="btn" id="gnCopyLinkBtn" title="Copy a share link (URL-hash genome, plan section 4.5)">&#128279; Copy link</button>
+                        </div>
+                        <div class="gn-body">
+                            <div class="gn-left">
+                                <div class="gn-left-section">
+                                    <label class="gn-section-title">Raw sequence (HH:SEQUENCE)</label>
+                                    <textarea id="gnRawText" class="gn-raw-text" spellcheck="false"></textarea>
+                                    <div class="gn-warnings" id="gnWarnings" hidden></div>
+                                    <div class="gn-raw-actions">
+                                        <button class="btn" id="gnLoadRawBtn" title="Parse the text above and load it into the table">&#8681; Load</button>
+                                        <button class="btn" id="gnCopyRawBtn" title="Copy to clipboard">&#128203; Copy</button>
+                                    </div>
+                                </div>
+                                <div class="gn-left-section">
+                                    <label class="gn-section-title">Helix</label>
+                                    <div class="gn-helixnav" id="gnHelixNav"></div>
+                                </div>
+                                <div class="gn-left-section gn-diversity">
+                                    <button class="btn" id="gnRemoveDiversityBtn" title="Merge heterozygous genes toward homozygous without changing expressed values">&#129516; Remove Diversity</button>
+                                    <button class="btn" id="gnRandomDiversityBtn" title="Randomize alleles while preserving each gene's current expressed value">&#127920; Random Diversity</button>
+                                </div>
+                            </div>
+                            <div class="gn-center">
+                                <div class="gn-table-toolbar">
+                                    <input type="search" id="gnSearch" class="gn-search" placeholder="&#128269; search genes…">
+                                    <span class="gn-spacer"></span>
+                                    <span id="gnGeneCount" class="gn-genecount"></span>
+                                </div>
+                                <div class="gn-table-scroll" id="gnTableScroll">
+                                    <table class="gn-table" id="gnTable">
+                                        <thead><tr>
+                                            <th>H:P</th><th>Gene</th><th>Pair</th><th>Value</th>
+                                            <th id="gnCompareHeaderCell" hidden>Compare</th>
+                                        </tr></thead>
+                                        <tbody id="gnTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="gn-dock">
+                                <div class="gn-dock-section">
+                                    <div class="gn-dock-title">&#128736; MODIFICATIONS</div>
+                                    <div class="gn-modgrid" id="gnModGrid"></div>
+                                </div>
+                                <div class="gn-dock-section gn-dock-presets">
+                                    <div class="gn-dock-title">&#129514; PRESETS</div>
+                                    <input type="search" id="gnPresetFilter" class="gn-preset-filter" placeholder="filter populations…">
+                                    <div class="gn-preset-list" id="gnPresetList"></div>
+                                </div>
+                                <div class="gn-dock-section gn-dock-library">
+                                    <div class="gn-dock-title">&#128193; DNA LIBRARY <span class="gn-lib-shared" id="gnLibShared" title="Shared live with the SIMPR Horsey Genome Editor - same store, same file format.">shared with SIMPR</span></div>
+                                    <div class="gn-library-actions">
+                                        <button class="btn" id="gnLibAddCatBtn" title="Create a category">&#10133; Add Category</button>
+                                        <button class="btn" id="gnLibSaveBtn" title="Save the genome shown on the left into the selected category">&#128190; <span id="gnLibSaveText">Save DNA</span></button>
+                                    </div>
+                                    <ul class="gn-cat-list" id="gnCategoryList"></ul>
+                                    <div class="gn-library-actions">
+                                        <button class="btn" id="gnLibExportBtn" title="Download the whole library as dna_library.json">&#10515; Export</button>
+                                        <button class="btn" id="gnLibImportBtn" title="Add the categories from a dna_library.json file">&#10514; Import</button>
+                                        <input type="file" id="gnLibImportFile" accept="application/json" hidden>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="workspace-pane" data-workspace="bulk">
+                    <div class="bk-root">
+                        <div class="bk-ops" id="bkOpsList"></div>
+                        <div class="bk-params" id="bkParams"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="statusbar">
+                <span id="statusLeft"></span>
+                <span id="statusRight"></span>
+            </div>
+        </div>
+    </div>
+</div>
+<input type="file" id="fallbackFileInput" accept=".dat" style="display:none">
+
+<!-- Resize modal (World workspace [...] overflow) -->
+<div class="modal-backdrop" id="resizeModal">
+    <div class="modal">
+        <div class="modal-header">Resize map</div>
+        <div class="modal-body">
+            <label>Width <input type="number" id="resizeWidth" min="1" max="4999"></label>
+            <label>Height <input type="number" id="resizeHeight" min="1" max="4999"></label>
+            <p class="hint">New cells are filled with water; the border ring is forced to border terrain on
+            export regardless. Anything that falls outside the new bounds is moved back inside, not deleted.</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" id="resizeCancelBtn">Cancel</button>
+            <button class="btn primary" id="resizeApplyBtn">Apply</button>
+        </div>
+    </div>
+</div>
+
+<!-- Settings drawer (plan section 5.6) -->
+<div id="settings-backdrop"></div>
+<div id="settings-drawer" style="display:none;">
+    <div class="settings-header">
+        <span>⚙ Settings</span>
+        <button class="btn icon" id="settingsCloseBtn">✕</button>
+    </div>
+    <div class="settings-tabs">
+        <button data-tab="appearance" class="active">Appearance</button>
+        <button data-tab="developer">Developer</button>
+        <button data-tab="data">Data</button>
+        <button data-tab="assets">Assets</button>
+        <button data-tab="import">Import</button>
+        <button data-tab="about">About</button>
+    </div>
+    <div class="settings-body">
+        <div class="settings-panel active" id="settings-appearance">
+            <h4>Density</h4>
+            <div class="radio-row"><label><input type="radio" name="density" value="auto" checked> Auto (Compact below 900px height)</label></div>
+            <div class="radio-row"><label><input type="radio" name="density" value="comfortable"> Comfortable</label></div>
+            <div class="radio-row"><label><input type="radio" name="density" value="compact"> Compact</label></div>
+        </div>
+        <div class="settings-panel" id="settings-developer">
+            <h4>Diagnostics cross-check</h4>
+            <p class="settings-note">Runs the heuristic genome-run scan (save-editor.html's <code>findDnaRuns</code>) against the loaded save and diffs it against the structural read (plan section 6.3). On the known corpus this residue is 59 runs — one horse at a constant offset past Willaby Ranch, two past Old Abandoned Track (plan section 2.6). A save outside the corpus that shows a different pattern here is how a fourth horse container would announce itself.</p>
+            <button class="btn" id="runDiagnosticsBtn" disabled>Run diagnostics</button>
+            <div id="diagnosticsResult"></div>
+        </div>
+        <div class="settings-panel" id="settings-data">
+            <h4>Custom data</h4>
+            <p class="settings-note">Custom <code>genes.xml</code> / <code>pop.xml</code> upload is not implemented yet — the bundled files in <code>data/</code> are always used.</p>
+        </div>
+        <div class="settings-panel" id="settings-assets">
+            <h4>Atlas override</h4>
+            <p class="settings-note">Pointing the World workspace at a modded game <code>data/</code> folder is not implemented yet — the bundled atlases are always used.</p>
+        </div>
+        <div class="settings-panel" id="settings-import">
+            <h4>TMX import</h4>
+            <p class="settings-note">Not implemented yet in the integrated editor. The legacy <code>tools/map-editor.html</code> still has this feature if you need it.</p>
+        </div>
+        <div class="settings-panel" id="settings-about">
+            <h4>Horsey Studio</h4>
+            <p class="settings-note">The merged map / roster / genome editor. See <code>INTEGRATED-EDITOR-PLAN.md</code> at the repo root for the full design and implementation record.</p>
+        </div>
+    </div>
+</div>
+
+<script src="js/core/savefile.js"></script>
+<script src="js/core/export.js"></script>
+<script src="js/core/genedata.js"></script>
+<script src="js/core/genome.js"></script>
+<script src="js/core/annotations.js"></script>
+<script src="js/core/items.js"></script>
+<script src="js/core/popdata.js"></script>
+<script src="js/core/bus.js"></script>
+<script src="js/core/history.js"></script>
+<script src="js/core/loctemplates.js"></script>
+<script src="js/core/dnalib.js"></script>
+<script src="js/core/savedoc.js"></script>
+<script src="js/ui/toast.js"></script>
+<script src="js/ui/modal.js"></script>
+<script src="js/ui/settings.js"></script>
+<script src="js/workspaces/world.js"></script>
+<script src="js/workspaces/horses.js"></script>
+<script src="js/workspaces/genome.js"></script>
+<script src="js/workspaces/bulk.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

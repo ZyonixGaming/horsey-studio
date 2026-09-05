@@ -1,0 +1,72 @@
+/* css/tokens.css — colours, spacing, density scale, focus rings.
+   Dark theme only (plan section 7.4 — all three source tools are dark today; tokens are
+   structured so a light theme is additive later, not a rewrite: every colour is a token here,
+   nothing is hardcoded downstream). */
+:root {
+    /* ---- surfaces ---- */
+    --bg-0: #0f1115;   /* app bar, rail */
+    --bg-1: #15181e;   /* workspace body background */
+    --bg-2: #1b1f27;   /* panels, docks */
+    --bg-3: #232833;   /* raised elements: cards, inputs */
+    --bg-4: #2c323f;   /* hover state on bg-3 */
+    --border: #333a48;
+    --border-soft: #262b35;
+
+    /* ---- text ---- */
+    --text-0: #e8eaf0;  /* primary */
+    --text-1: #a8afbe;  /* secondary */
+    --text-2: #6b7280;  /* muted / disabled */
+
+    /* ---- brand / accent ---- */
+    --accent: #7c9cff;
+    --accent-strong: #5b7cf7;
+    --accent-text: #0f1115;
+
+    /* ---- semantic ---- */
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --info: #60a5fa;
+
+    /* ---- DNA bases (plan section 13, F5) — one colour per base, used by the Genome
+       workspace's Pair column. Kept as tokens so a future light theme can restate them. ---- */
+    --base-a: #eab308;  /* yellow */
+    --base-c: #60a5fa;  /* blue */
+    --base-g: #4ade80;  /* green */
+    --base-t: #f87171;  /* red */
+
+    /* ---- focus ---- */
+    --focus-ring: 0 0 0 2px var(--bg-1), 0 0 0 4px var(--accent);
+
+    /* ---- spacing scale ---- */
+    --sp-1: 2px;
+    --sp-2: 4px;
+    --sp-3: 8px;
+    --sp-4: 12px;
+    --sp-5: 16px;
+    --sp-6: 24px;
+
+    /* ---- chrome dimensions (plan section 5.1) ---- */
+    --h-appbar: 40px;
+    --h-toolbar: 36px;
+    --h-statusbar: 22px;
+    --w-rail: 48px;
+
+    /* ---- density (plan section 7.3) — Comfortable is the default; .density-compact on
+       <body> switches every one of these. Compact triggers automatically when
+       innerHeight < 900 (js/app.js), matching 720p. ---- */
+    --row-h: 28px;
+    --font-base: 13px;
+    --panel-pad: 12px;
+
+    --radius-sm: 4px;
+    --radius-md: 6px;
+
+    --transition-fast: 100ms ease;
+}
+
+body.density-compact {
+    --row-h: 22px;
+    --font-base: 11.5px;
+    --panel-pad: 8px;
+}
